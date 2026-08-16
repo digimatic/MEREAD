@@ -25,7 +25,7 @@ struct Args {
     force: bool,
 
     /// Address to bind the server to
-    #[arg(long, short, default_value = "localhost:3000")]
+    #[arg(long, short, default_value = "127.0.0.1:3000")]
     address: String,
 
     /// Whether to open the browser on serve

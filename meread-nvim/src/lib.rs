@@ -34,7 +34,7 @@ fn get_contents_of_nvim_buffer(buffer: &Buffer) -> String {
 
 fn start_preview_and_attach_to_buf_changes(_: CommandArgs) {
     const LIGHT_MODE: bool = false;
-    const ADDRESS: &str = "localhost:3000";
+    const ADDRESS: &str = "127.0.0.1:3000";
     const OPEN: bool = true;
 
     let comrak_config = ComrakConfig::new(LIGHT_MODE).unwrap();

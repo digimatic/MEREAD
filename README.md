@@ -86,7 +86,7 @@ Arguments:
 Options:
   -e, --export-dir <EXPORT_DIR>  If supplied, will export the markdown file to HTML in the specified directory
   -f, --force                    Whether to overwrite the export directory if it exists
-  -a, --address <ADDRESS>        Address to bind the server to [default: localhost:3000]
+  -a, --address <ADDRESS>        Address to bind the server to [default: 127.0.0.1:3000]
   -o, --open                     Whether to open the browser on serve
   -l, --light-mode               Render page in light-mode style
       --generate-manpage         Print manpage to stdout and exit
