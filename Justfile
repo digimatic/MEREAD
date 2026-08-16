@@ -4,7 +4,7 @@ release:
 	cargo release -x $VERSION
 	git cliff -o CHANGELOG.md --tag $VERSION
 	git add CHANGELOG.md
-	git commit --skip-checks --amend --no-edit
+	git commit --no-verify --amend --no-edit
 	git tag v$VERSION -f
 
 push:
