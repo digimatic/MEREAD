@@ -1,14 +1,46 @@
 # Changelog
 
-## [1.0.1](https://github.com/sermuns/MEREAD/compare/v1.0.0..1.0.1) - 2026-07-13
-
-### 🚀 Features
-
-- **(meread-nvim)** create init.lua by Samuel Åkesson in [be30d05](https://github.com/sermuns/MEREAD/commit/be30d056aaa35e80632b862d649be38fb710841d)
+## [1.0.2](https://github.com/sermuns/MEREAD/compare/v1.0.1..1.0.2) - 2026-08-16
 
 ### 🐛 Bug Fixes
 
-- **(meread-nvim)** open preview on start by Samuel Åkesson in [2d37d91](https://github.com/sermuns/MEREAD/commit/2d37d91b9118ba81d9ffebb4ae8a0e4cf161518b)
+- **(meread)** fix docker by @sermuns in [eb5187d](https://github.com/sermuns/MEREAD/commit/eb5187d37c2a2282c007a2d906ae395d4fba517a)
+- **(meread-nvim)** hardcode darkmode for now.. by @sermuns in [548d79d](https://github.com/sermuns/MEREAD/commit/548d79df0a90b4d2914519bc52e360e524c795a2)
+- **(meread-nvim)** update version.. by Samuel Åkesson in [6494a32](https://github.com/sermuns/MEREAD/commit/6494a3270e755b9f5345884f41f02b61b5cadc5f)
+- use 127.0.0.1 instead of localhost by @sermuns in [67a5851](https://github.com/sermuns/MEREAD/commit/67a5851d6822ce61be48b7e34d96c6f2a500523e)
+
+### 💼 Other
+
+- **(deps)** bump clap from 4.6.1 to 4.6.2 by @dependabot[bot] in [#47](https://github.com/sermuns/MEREAD/pull/47)
+- **(deps)** bump open from 5.3.6 to 5.4.0 by @dependabot[bot] in [#48](https://github.com/sermuns/MEREAD/pull/48)
+- **(deps)** bump jiff from 0.2.32 to 0.2.34 by @dependabot[bot] in [#50](https://github.com/sermuns/MEREAD/pull/50)
+- **(deps)** bump clap from 4.6.2 to 4.6.4 by @dependabot[bot] in [#49](https://github.com/sermuns/MEREAD/pull/49)
+- **(deps)** bump jiff from 0.2.34 to 0.2.35 by @dependabot[bot] in [#51](https://github.com/sermuns/MEREAD/pull/51)
+
+### 📚 Documentation
+
+- **(meread-nvim)** document neovim plugin usage by @sermuns in [c122ac7](https://github.com/sermuns/MEREAD/commit/c122ac762feddd33a397f0578a167a781633b3f4)
+- **(meread-nvim)** add comment in lua snippet by @sermuns in [ffb7888](https://github.com/sermuns/MEREAD/commit/ffb788814fd89937e851572cfc2874a31f043c85)
+- add screencast demos to README by @sermuns in [f7a8ee4](https://github.com/sermuns/MEREAD/commit/f7a8ee49679dc5eaf5b709eaf780af757e0733aa)
+
+### ⚙️ Miscellaneous Tasks
+
+- update cargo deny job by @sermuns in [cbe8fef](https://github.com/sermuns/MEREAD/commit/cbe8fef4a822e945b11f315a682bfe599ae5bec3)
+- use --no-verify in commit by Samuel Åkesson in [071a2fe](https://github.com/sermuns/MEREAD/commit/071a2feb0eec72acf2b017670cb66abe59485536)
+- release v1.0.2 by Samuel Åkesson in [fb9e028](https://github.com/sermuns/MEREAD/commit/fb9e0288e613e3173a02636098f89be3af71dde1)
+## [v1.0.1](https://github.com/sermuns/MEREAD/compare/v1.0.0..v1.0.1) - 2026-07-13
+
+### 🚀 Features
+
+- **(meread-nvim)** create init.lua by @sermuns in [be30d05](https://github.com/sermuns/MEREAD/commit/be30d056aaa35e80632b862d649be38fb710841d)
+
+### 🐛 Bug Fixes
+
+- **(meread-nvim)** open preview on start by @sermuns in [2d37d91](https://github.com/sermuns/MEREAD/commit/2d37d91b9118ba81d9ffebb4ae8a0e4cf161518b)
+
+### ⚙️ Miscellaneous Tasks
+
+- release v1.0.1 by @sermuns in [02ac910](https://github.com/sermuns/MEREAD/commit/02ac91064aec79a5120ae9fe8596168698f5ac50)
 ## [v1.0.0](https://github.com/sermuns/MEREAD/compare/v0.7.1..v1.0.0) - 2026-07-13
 
 ### 🚀 Features
