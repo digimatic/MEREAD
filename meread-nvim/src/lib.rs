@@ -56,12 +56,10 @@ fn start_preview_and_attach_to_buf_changes(_: CommandArgs) {
 
     let opts = BufAttachOpts::builder()
         .on_lines(move |(_, buffer, _, _, _, _, _, _, _): OnLinesArgs| {
-            markdown_tx
-                .send(RawMarkdown {
-                    content: get_contents_of_nvim_buffer(&buffer),
-                    file_name: buffer.get_name().unwrap().to_string(),
-                })
-                .unwrap();
+            let _ = markdown_tx.send(RawMarkdown {
+                content: get_contents_of_nvim_buffer(&buffer),
+                file_name: buffer.get_name().unwrap().to_string(),
+            });
             false
         })
         .build();
