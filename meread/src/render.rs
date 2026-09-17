@@ -4,8 +4,9 @@ use comrak::{
     html::ChildRendering,
     nodes::{AlertType, NodeValue},
 };
+use color_eyre::eyre::Context;
 use math_core::{ConvertResult, LatexToMathML, MathDisplay};
-use std::{fmt::Write, sync::LazyLock};
+use std::{fmt::Write, fs, path::Path, sync::Arc, sync::LazyLock};
 
 use crate::comrak_config::ComrakConfig;
 
@@ -17,7 +18,7 @@ pub struct RawMarkdown {
 pub struct RenderedMarkdown {
     pub content: String,
     light: bool,
-    comrak_config: ComrakConfig,
+    comrak_config: Arc<ComrakConfig>,
     pub file_name: String,
 }
 
@@ -28,7 +29,7 @@ impl RenderedMarkdown {
             file_name,
         }: RawMarkdown,
         light: bool,
-        comrak_config: ComrakConfig,
+        comrak_config: Arc<ComrakConfig>,
     ) -> color_eyre::Result<Self> {
         let mut s = Self {
             content: String::new(),
@@ -51,6 +52,28 @@ impl RenderedMarkdown {
             &mut self.content,
         )
     }
+}
+
+/// Render a markdown file from disk into a standalone HTML page.
+pub fn render_markdown_file(
+    markdown_file_path: &Path,
+    title: &str,
+    light: bool,
+    comrak_config: &ComrakConfig,
+) -> color_eyre::Result<String> {
+    let markdown_content = fs::read_to_string(markdown_file_path)
+        .with_context(|| format!("failed to read {}", markdown_file_path.display()))?;
+
+    let mut rendered_html = String::new();
+    render_markdown_to_html(
+        &markdown_content,
+        title,
+        light,
+        comrak_config,
+        &mut rendered_html,
+    )?;
+
+    Ok(rendered_html)
 }
 
 #[derive(Template)]

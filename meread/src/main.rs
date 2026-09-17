@@ -24,6 +24,11 @@ struct Args {
     #[arg(long, short)]
     force: bool,
 
+    /// Directory whose files are servable, so that links can be followed
+    /// [default: the markdown file's own directory]
+    #[arg(long, short)]
+    root: Option<PathBuf>,
+
     /// Address to bind the server to
     #[arg(long, short, default_value = "127.0.0.1:3000")]
     address: String,
@@ -74,17 +79,44 @@ fn main() -> color_eyre::Result<()> {
         return Ok(());
     }
 
+    let markdown_file_path = markdown_file_path
+        .canonicalize()
+        .with_context(|| format!("failed to open {}", markdown_file_path.display()))?;
+
+    // everything below the root is servable, so that links out of the document can be followed.
+    // the document's own directory is the smallest root that makes sense; pass --root to serve a
+    // wider tree, for instance when a document in a subdirectory links back up.
+    let root_dir = match &args.root {
+        Some(root) => root
+            .canonicalize()
+            .with_context(|| format!("failed to open root directory {}", root.display()))?,
+        None => markdown_file_path
+            .parent()
+            .context("trying to serve file in root / or something??")?
+            .to_path_buf(),
+    };
+
+    // the url the document is served at, relative to the root
+    let index_path = markdown_file_path
+        .strip_prefix(&root_dir)
+        .with_context(|| {
+            format!(
+                "{} is not inside the root directory {}",
+                markdown_file_path.display(),
+                root_dir.display()
+            )
+        })?
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/");
+
     let (markdown_tx, markdown_rx) = mpsc::channel();
     // needed for initial build
     markdown_tx
         .send(RawMarkdown {
             content: fs::read_to_string(&markdown_file_path).unwrap(),
-            // FIXME: fuck me
-            file_name: markdown_file_path
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string(),
+            file_name: index_path,
         })
         .unwrap();
 
@@ -116,13 +148,9 @@ fn main() -> color_eyre::Result<()> {
     })
     .context("failed to set up file watcher")?;
 
-    let parent_dir = markdown_file_path
-        .parent()
-        .context("trying to watch file in root / or something??")?;
-
     debouncer
-        .watch(parent_dir, notify::RecursiveMode::Recursive)
-        .with_context(|| format!("failed to watch path: {}", markdown_file_path.display()))?;
+        .watch(&root_dir, notify::RecursiveMode::Recursive)
+        .with_context(|| format!("failed to watch path: {}", root_dir.display()))?;
 
     serve_and_rebuild_on_receive(
         markdown_rx,
@@ -130,5 +158,6 @@ fn main() -> color_eyre::Result<()> {
         comrak_config,
         &args.address,
         args.open,
+        root_dir,
     )
 }

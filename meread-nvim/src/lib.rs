@@ -1,4 +1,7 @@
-use std::sync::mpsc;
+use std::{
+    path::{Path, PathBuf},
+    sync::mpsc,
+};
 
 use itertools::Itertools;
 use meread::{comrak_config::ComrakConfig, render::RawMarkdown};
@@ -39,12 +42,28 @@ fn start_preview_and_attach_to_buf_changes(_: CommandArgs) {
 
     let comrak_config = ComrakConfig::new(LIGHT_MODE).unwrap();
 
+    let current_buffer = nvim_oxi::api::get_current_buf();
+
+    // links out of the buffer are resolved against the directory it lives in
+    let root_dir = current_buffer
+        .get_name()
+        .ok()
+        .and_then(|name| PathBuf::from(name.to_string()).parent().map(Path::to_path_buf))
+        .filter(|parent| parent.is_dir())
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("."));
+
     let (markdown_tx, markdown_rx) = mpsc::channel();
     std::thread::spawn(|| {
-        meread::serve_and_rebuild_on_receive(markdown_rx, LIGHT_MODE, comrak_config, ADDRESS, OPEN)
+        meread::serve_and_rebuild_on_receive(
+            markdown_rx,
+            LIGHT_MODE,
+            comrak_config,
+            ADDRESS,
+            OPEN,
+            root_dir,
+        )
     });
-
-    let current_buffer = nvim_oxi::api::get_current_buf();
 
     // send initial state of buffer, needed!
     markdown_tx

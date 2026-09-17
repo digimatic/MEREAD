@@ -1,7 +1,10 @@
 use color_eyre::eyre::{Context, OptionExt, ensure};
 use std::{fs, path::Path};
 
-use crate::{assets::EmbeddedAsset, comrak_config::ComrakConfig, render::render_markdown_to_html};
+use crate::{
+    ASSET_PREFIX, assets::EmbeddedAsset, comrak_config::ComrakConfig,
+    render::render_markdown_to_html,
+};
 
 pub fn export(
     markdown_file_path: &Path,
@@ -34,9 +37,13 @@ pub fn export(
 
     fs::write(export_dir.join("index.html"), rendered_html).context("failed to write HTML")?;
 
+    // assets live under their own prefix, matching the urls in the rendered html
+    let asset_dir = export_dir.join(ASSET_PREFIX);
+    fs::create_dir_all(&asset_dir).context("failed to create asset directory")?;
+
     for path in EmbeddedAsset::iter() {
         fs::write(
-            export_dir.join(path.as_ref()),
+            asset_dir.join(path.as_ref()),
             EmbeddedAsset::get(&path)
                 .ok_or_eyre("failed getting asset")?
                 .data,
