@@ -68,6 +68,14 @@ p {
 	line-height: 1.5;
 }
 
+.meread-breadcrumb {
+	color: var(--fgColor-muted);
+	font-size: 85%;
+	padding-bottom: 0.5rem;
+	margin-bottom: 1rem;
+	border-bottom: 1px solid var(--borderColor-muted);
+}
+
 strong,
 h1,
 h2,

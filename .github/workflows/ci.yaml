@@ -37,6 +37,19 @@ jobs:
 
       - run: cargo clippy --workspace --all-features -- -D warnings
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo test --workspace
+
   cargo-machete:
     name: Check for unused dependencies
     runs-on: ubuntu-latest

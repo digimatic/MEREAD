@@ -1,18 +1,23 @@
 use clap::{CommandFactory, Parser};
-use color_eyre::eyre::{Context, ContextCompat};
-use jiff::Zoned;
+use color_eyre::eyre::{Context, ContextCompat, bail, ensure};
 use notify::EventKind;
 use notify_debouncer_full::{DebounceEventResult, new_debouncer};
-use std::{fs, path::PathBuf, sync::mpsc, time::Duration};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::mpsc,
+    time::Duration,
+};
 
 use meread::{
-    comrak_config::ComrakConfig, export::export, render::RawMarkdown, serve_and_rebuild_on_receive,
+    DIRECTORY_INDEX_NAMES, comrak_config::ComrakConfig, export::export, listing::listing_markdown,
+    relative_url, render::RawMarkdown, serve_and_rebuild_on_receive,
 };
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Path to markdown file or directory containing README.md
+    /// Path to markdown file, or directory to browse
     #[arg(default_value = ".")]
     path: PathBuf,
 
@@ -28,6 +33,10 @@ struct Args {
     /// [default: the markdown file's own directory]
     #[arg(long, short)]
     root: Option<PathBuf>,
+
+    /// Browse the directory even if it contains a README.md or index.md
+    #[arg(long)]
+    list: bool,
 
     /// Address to bind the server to
     #[arg(long, short, default_value = "127.0.0.1:3000")]
@@ -46,6 +55,36 @@ struct Args {
     generate_manpage: bool,
 }
 
+/// What meread was pointed at: the page served at the root url, and the thing the watcher
+/// regenerates when the tree changes.
+#[derive(Clone)]
+enum Target {
+    /// A markdown file, rendered as it is.
+    Document(PathBuf),
+    /// A directory, rendered as a browsable listing of what is in it.
+    Directory(PathBuf),
+}
+
+impl Target {
+    fn path(&self) -> &Path {
+        match self {
+            Self::Document(path) | Self::Directory(path) => path,
+        }
+    }
+}
+
+/// The markdown the target currently amounts to. `relative` is the target's path below the server
+/// root, needed to build listing links.
+fn read_target(target: &Target, relative: &str) -> color_eyre::Result<String> {
+    match target {
+        Target::Document(path) => {
+            fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))
+        }
+        Target::Directory(path) => listing_markdown(path, relative)
+            .with_context(|| format!("failed to list {}", path.display())),
+    }
+}
+
 fn main() -> color_eyre::Result<()> {
     color_eyre::config::HookBuilder::default()
         .display_env_section(false)
@@ -60,17 +99,42 @@ fn main() -> color_eyre::Result<()> {
         return Ok(());
     }
 
-    let markdown_file_path = if args.path.is_dir() {
-        args.path.join("README.md")
+    let path = args
+        .path
+        .canonicalize()
+        .with_context(|| format!("failed to open {}", args.path.display()))?;
+
+    // a directory renders its README.md (or index.md) when it has one, as it always has; without
+    // one, or with --list, it is browsable instead
+    let target = if path.is_dir() {
+        let index_file = if args.list {
+            None
+        } else {
+            DIRECTORY_INDEX_NAMES
+                .iter()
+                .map(|name| path.join(name))
+                .find(|candidate| candidate.is_file())
+        };
+
+        index_file.map_or(Target::Directory(path), Target::Document)
     } else {
-        args.path
+        Target::Document(path)
     };
 
     let comrak_config = ComrakConfig::new(args.light_mode)?;
 
     if let Some(export_dir) = &args.export_dir {
+        // a listing exports to an index.html full of links to files that were never exported,
+        // which is worse than no export at all
+        let Target::Document(markdown_file_path) = &target else {
+            bail!(
+                "nothing to export: {} is a directory, --export-dir needs a markdown file",
+                target.path().display()
+            );
+        };
+
         export(
-            &markdown_file_path,
+            markdown_file_path,
             export_dir,
             args.force,
             args.light_mode,
@@ -79,10 +143,6 @@ fn main() -> color_eyre::Result<()> {
         return Ok(());
     }
 
-    let markdown_file_path = markdown_file_path
-        .canonicalize()
-        .with_context(|| format!("failed to open {}", markdown_file_path.display()))?;
-
     // everything below the root is servable, so that links out of the document can be followed.
     // the document's own directory is the smallest root that makes sense; pass --root to serve a
     // wider tree, for instance when a document in a subdirectory links back up.
@@ -90,38 +150,38 @@ fn main() -> color_eyre::Result<()> {
         Some(root) => root
             .canonicalize()
             .with_context(|| format!("failed to open root directory {}", root.display()))?,
-        None => markdown_file_path
-            .parent()
-            .context("trying to serve file in root / or something??")?
-            .to_path_buf(),
+        None => match &target {
+            Target::Document(markdown_file_path) => markdown_file_path
+                .parent()
+                .context("trying to serve file in root / or something??")?
+                .to_path_buf(),
+            Target::Directory(dir) => dir.clone(),
+        },
     };
 
+    ensure!(
+        target.path().starts_with(&root_dir),
+        "{} is not inside the root directory {}",
+        target.path().display(),
+        root_dir.display()
+    );
+
     // the url the document is served at, relative to the root
-    let index_path = markdown_file_path
-        .strip_prefix(&root_dir)
-        .with_context(|| {
-            format!(
-                "{} is not inside the root directory {}",
-                markdown_file_path.display(),
-                root_dir.display()
-            )
-        })?
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy())
-        .collect::<Vec<_>>()
-        .join("/");
+    let index_path = relative_url(&root_dir, target.path());
 
     let (markdown_tx, markdown_rx) = mpsc::channel();
     // needed for initial build
     markdown_tx
         .send(RawMarkdown {
-            content: fs::read_to_string(&markdown_file_path).unwrap(),
-            file_name: index_path,
+            content: read_target(&target, &index_path)?,
+            file_name: index_path.clone(),
         })
         .unwrap();
 
     let mut debouncer = new_debouncer(Duration::from_millis(10), None, {
-        let markdown_file_path = markdown_file_path.clone();
+        let target = target.clone();
+        let index_path = index_path.clone();
+        let markdown_tx = markdown_tx.clone();
         move |result: DebounceEventResult| {
             let Ok(events) = result else {
                 return;
@@ -136,14 +196,29 @@ fn main() -> color_eyre::Result<()> {
                 return;
             }
 
-            if events
-                .iter()
-                .any(|event| event.paths.contains(&markdown_file_path))
+            // a document only cares about its own file, a listing about anything below it
+            if let Target::Document(markdown_file_path) = &target
+                && !events
+                    .iter()
+                    .any(|event| event.paths.contains(markdown_file_path))
             {
-                let now_time = Zoned::now().time();
-                #[cfg(feature = "stdout")]
-                println!("[{}] file changed, rebuilding..", now_time);
+                return;
             }
+
+            #[cfg(feature = "stdout")]
+            println!("[{}] changed, rebuilding..", jiff::Zoned::now().time());
+
+            let Ok(content) = read_target(&target, &index_path) else {
+                return;
+            };
+
+            // the receiver is gone once the server shuts down, which is not an error
+            markdown_tx
+                .send(RawMarkdown {
+                    content,
+                    file_name: index_path.clone(),
+                })
+                .ok();
         }
     })
     .context("failed to set up file watcher")?;

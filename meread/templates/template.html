@@ -15,11 +15,18 @@
 </head>
 
 <body>
+	{%if !breadcrumb.is_empty()%}
+	<nav class="meread-breadcrumb">{{ breadcrumb | safe }}</nav>
+	{%endif%}
+
 	{{ contents | safe }}
 </body>
 <script>
+	// only the page meread was started with is the one being pushed over the socket; any other
+	// page has to reload itself instead of swallowing someone else's html
+	const isIndex = {{ is_index }};
 	new WebSocket('/~~~meread-reload').onmessage = (e) => {
-		if (e.data) {
+		if (isIndex && e.data) {
 			document.body.innerHTML = e.data
 		} else {
 			window.location.reload()

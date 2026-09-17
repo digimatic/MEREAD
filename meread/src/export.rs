@@ -2,8 +2,10 @@ use color_eyre::eyre::{Context, OptionExt, ensure};
 use std::{fs, path::Path};
 
 use crate::{
-    ASSET_PREFIX, assets::EmbeddedAsset, comrak_config::ComrakConfig,
-    render::render_markdown_to_html,
+    ASSET_PREFIX,
+    assets::EmbeddedAsset,
+    comrak_config::ComrakConfig,
+    render::{PageMeta, render_markdown_to_html},
 };
 
 pub fn export(
@@ -29,8 +31,13 @@ pub fn export(
     let mut rendered_html = String::new();
     render_markdown_to_html(
         &markdown_content,
-        markdown_file_name.to_str().unwrap(),
-        light_mode,
+        // a single exported page has no tree to navigate, so no breadcrumb
+        &PageMeta {
+            title: markdown_file_name.to_str().unwrap(),
+            breadcrumb: "",
+            light: light_mode,
+            is_index: true,
+        },
         comrak_config,
         &mut rendered_html,
     )?;

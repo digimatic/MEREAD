@@ -81,11 +81,13 @@ preview github flavored markdown locally
 Usage: meread [OPTIONS] [PATH]
 
 Arguments:
-  [PATH]  Path to markdown file or directory containing README.md [default: .]
+  [PATH]  Path to markdown file, or directory to browse [default: .]
 
 Options:
   -e, --export-dir <EXPORT_DIR>  If supplied, will export the markdown file to HTML in the specified directory
   -f, --force                    Whether to overwrite the export directory if it exists
+  -r, --root <ROOT>              Directory whose files are servable, so that links can be followed [default: the markdown file's own directory]
+      --list                     Browse the directory even if it contains a README.md or index.md
   -a, --address <ADDRESS>        Address to bind the server to [default: 127.0.0.1:3000]
   -o, --open                     Whether to open the browser on serve
   -l, --light-mode               Render page in light-mode style
@@ -93,6 +95,22 @@ Options:
   -h, --help                     Print help
   -V, --version                  Print version
 ```
+
+### Browsing
+
+Point MEREAD at a directory and it renders that directory's `README.md` (or `index.md`), as it
+always has. A directory without either is shown as a browsable listing instead, and `--list` gives
+you that listing even when there is a `README.md`:
+
+```bash
+meread notes/          # listing, if notes/ has no README.md
+meread . --list        # listing, even though this repo has one
+```
+
+Everything below the served directory is browsable: links between markdown files are followed and
+rendered on the fly, images and other files are served as they are, and every page carries a
+breadcrumb trail back up the tree. Use `--root` to widen what is servable, for instance when a
+document in a subdirectory links back up.
 
 ### Installation
 

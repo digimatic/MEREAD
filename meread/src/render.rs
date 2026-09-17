@@ -1,10 +1,10 @@
 use askama::Template;
+use color_eyre::eyre::Context;
 use comrak::{
     create_formatter,
     html::ChildRendering,
     nodes::{AlertType, NodeValue},
 };
-use color_eyre::eyre::Context;
 use math_core::{ConvertResult, LatexToMathML, MathDisplay};
 use std::{fmt::Write, fs, path::Path, sync::Arc, sync::LazyLock};
 
@@ -15,11 +15,22 @@ pub struct RawMarkdown {
     pub file_name: String,
 }
 
+/// Everything about a page that is not its markdown.
+pub struct PageMeta<'a> {
+    pub title: &'a str,
+    /// Prerendered html for the trail of links back up the tree.
+    pub breadcrumb: &'a str,
+    pub light: bool,
+    /// Whether this is the document held in memory, and so the one the reload socket pushes.
+    pub is_index: bool,
+}
+
 pub struct RenderedMarkdown {
     pub content: String,
     light: bool,
     comrak_config: Arc<ComrakConfig>,
     pub file_name: String,
+    breadcrumb: String,
 }
 
 impl RenderedMarkdown {
@@ -28,6 +39,7 @@ impl RenderedMarkdown {
             content: markdown_content,
             file_name,
         }: RawMarkdown,
+        breadcrumb: String,
         light: bool,
         comrak_config: Arc<ComrakConfig>,
     ) -> color_eyre::Result<Self> {
@@ -36,6 +48,7 @@ impl RenderedMarkdown {
             light,
             comrak_config,
             file_name,
+            breadcrumb,
         };
 
         s.rebuild(&markdown_content)?;
@@ -44,10 +57,16 @@ impl RenderedMarkdown {
     }
 
     pub fn rebuild(&mut self, markdown_content: &str) -> color_eyre::Result<()> {
+        let meta = PageMeta {
+            title: &self.file_name,
+            breadcrumb: &self.breadcrumb,
+            light: self.light,
+            is_index: true,
+        };
+
         render_markdown_to_html(
             markdown_content,
-            &self.file_name,
-            self.light,
+            &meta,
             &self.comrak_config,
             &mut self.content,
         )
@@ -57,21 +76,14 @@ impl RenderedMarkdown {
 /// Render a markdown file from disk into a standalone HTML page.
 pub fn render_markdown_file(
     markdown_file_path: &Path,
-    title: &str,
-    light: bool,
+    meta: &PageMeta,
     comrak_config: &ComrakConfig,
 ) -> color_eyre::Result<String> {
     let markdown_content = fs::read_to_string(markdown_file_path)
         .with_context(|| format!("failed to read {}", markdown_file_path.display()))?;
 
     let mut rendered_html = String::new();
-    render_markdown_to_html(
-        &markdown_content,
-        title,
-        light,
-        comrak_config,
-        &mut rendered_html,
-    )?;
+    render_markdown_to_html(&markdown_content, meta, comrak_config, &mut rendered_html)?;
 
     Ok(rendered_html)
 }
@@ -80,8 +92,10 @@ pub fn render_markdown_file(
 #[template(path = "template.html")]
 struct HtmlTemplate<'a> {
     title: &'a str,
+    breadcrumb: &'a str,
     contents: &'a str,
     light: bool,
+    is_index: bool,
 }
 
 static MATHML_CONVERTER: LazyLock<LatexToMathML> = LazyLock::new(LatexToMathML::default);
@@ -154,8 +168,7 @@ create_formatter!(CustomFormatter, {
 
 pub fn render_markdown_to_html(
     markdown_content: &str,
-    file_name: &str,
-    light: bool,
+    meta: &PageMeta,
     comrak_config: &ComrakConfig,
     output: &mut String,
 ) -> color_eyre::Result<()> {
@@ -173,9 +186,11 @@ pub fn render_markdown_to_html(
     )?;
 
     HtmlTemplate {
-        title: file_name,
+        title: meta.title,
+        breadcrumb: meta.breadcrumb,
         contents: &formatted,
-        light,
+        light: meta.light,
+        is_index: meta.is_index,
     }
     .render_into(output)?;
 

@@ -48,10 +48,21 @@ fn start_preview_and_attach_to_buf_changes(_: CommandArgs) {
     let root_dir = current_buffer
         .get_name()
         .ok()
-        .and_then(|name| PathBuf::from(name.to_string()).parent().map(Path::to_path_buf))
+        .and_then(|name| {
+            PathBuf::from(name.to_string())
+                .parent()
+                .map(Path::to_path_buf)
+        })
         .filter(|parent| parent.is_dir())
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(|| PathBuf::from("."));
+
+    // the url the buffer is served at, relative to that directory, which is what the server
+    // matches requests against and builds the breadcrumb from
+    let file_name = current_buffer.get_name().map_or_else(
+        |_| String::new(),
+        |name| meread::relative_url(&root_dir, Path::new(&name.to_string())),
+    );
 
     let (markdown_tx, markdown_rx) = mpsc::channel();
     std::thread::spawn(|| {
@@ -69,7 +80,7 @@ fn start_preview_and_attach_to_buf_changes(_: CommandArgs) {
     markdown_tx
         .send(RawMarkdown {
             content: get_contents_of_nvim_buffer(&current_buffer),
-            file_name: current_buffer.get_name().unwrap().to_string(),
+            file_name: file_name.clone(),
         })
         .unwrap();
 
@@ -77,7 +88,7 @@ fn start_preview_and_attach_to_buf_changes(_: CommandArgs) {
         .on_lines(move |(_, buffer, _, _, _, _, _, _, _): OnLinesArgs| {
             let _ = markdown_tx.send(RawMarkdown {
                 content: get_contents_of_nvim_buffer(&buffer),
-                file_name: buffer.get_name().unwrap().to_string(),
+                file_name: file_name.clone(),
             });
             false
         })
